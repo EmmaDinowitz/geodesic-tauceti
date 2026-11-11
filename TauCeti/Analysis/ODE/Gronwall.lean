@@ -13,7 +13,7 @@ import Mathlib.MeasureTheory.Integral.DominatedConvergence
 import Mathlib.MeasureTheory.Integral.IntervalIntegral.FundThmCalculus
 
 /-!
-# Grönwall's inequality in integral form
+# Grönwall-type estimates
 
 Mathlib's Grönwall inequality (`le_gronwallBound_of_liminf_deriv_right_le`) bounds a function by
 a bound on its derivative. Energy estimates for evolution equations instead produce a bound on a
@@ -21,13 +21,24 @@ function by an integral of itself: a continuous `φ` with `φ t ≤ c + K ∫ₐ
 some `K ≥ 0`. This file proves that such a `φ` satisfies `φ t ≤ c exp (K (t - a))`
 (`TauCeti.le_mul_exp_of_le_add_mul_integral`).
 
+The hypothesis `K ≥ 0` cannot be dropped: a very negative stretch of `φ` makes `c + K ∫ₐᵗ φ`
+large when `K < 0`.
+
 It also writes Mathlib's `gronwallBound` with a negative rate `-λ` in terms of the exponential
 integral `E_λ(T) = ∫₀ᵀ e^{λr} dr` (`TauCeti.exp_mul_gronwallBound_neg`), and records that
 `E_λ(T) > 0` for `T > 0` (`TauCeti.integral_exp_mul_pos`) and `E_λ(T) ≤ T e^{|λ|T}` for `T ≥ 0`
 (`TauCeti.integral_exp_mul_le`).
 
-The hypothesis `K ≥ 0` cannot be dropped: a very negative stretch of `φ` makes `c + K ∫ₐᵗ φ`
-large when `K < 0`.
+Finally, it specializes Mathlib's inequality to exponential decay: a function whose derivative
+satisfies `g' ≤ -λ g` on `[T, ∞)` is bounded by `g T exp (-λ (t - T))` there
+(`TauCeti.le_mul_exp_of_hasDerivAt_le_neg_mul`), hence by `C exp (-λ t)` for large `t`
+(`TauCeti.exists_le_mul_exp_atTop_of_hasDerivAt_le_neg_mul`).
+
+Mathlib's uniqueness statement `eq_zero_of_abs_deriv_le_mul_abs_self_of_eq_zero_right` propagates
+the vanishing of a function with `‖f'‖ ≤ K ‖f‖` forward from the left endpoint of an interval.
+Reversing time gives the two-sided version: on `[a, b]` such a function vanishes identically as
+soon as it vanishes at one point (`TauCeti.eq_zero_of_norm_deriv_le_mul_norm_self_of_mem_Icc`).
+This is the uniqueness argument for linear differential equations by energy estimates.
 
 ## References
 
@@ -111,5 +122,66 @@ theorem integral_exp_mul_le (lam : ℝ) {T : ℝ} (hT : 0 ≤ T) :
     (intervalIntegrable_const (μ := volume)) fun r hr ↦ exp_le_exp.2 <| by
       nlinarith [le_abs_self lam, abs_nonneg lam, hr.1, hr.2]
   simpa using this
+
+/-- **Exponential decay from a differential inequality.** If `g' ≤ -lam * g` on `[T, ∞)`, then
+`g t ≤ g T * exp (-(lam * (t - T)))` for every `t ≥ T`. -/
+theorem le_mul_exp_of_hasDerivAt_le_neg_mul {g g' : ℝ → ℝ} {T lam : ℝ}
+    (hg : ∀ s ∈ Ici T, HasDerivAt g (g' s) s) (hle : ∀ s ∈ Ici T, g' s ≤ -lam * g s)
+    {t : ℝ} (ht : T ≤ t) :
+    g t ≤ g T * exp (-(lam * (t - T))) := by
+  have h := le_gronwallBound_of_liminf_deriv_right_le (f := g) (f' := g') (δ := g T) (K := -lam)
+    (ε := 0) (a := T) (b := t) (fun s hs ↦ (hg s hs.1).continuousAt.continuousWithinAt)
+    (fun s hs r hr ↦ (hg s hs.1).hasDerivWithinAt.liminf_right_slope_le hr) le_rfl
+    (fun s hs ↦ by linarith [hle s hs.1]) t ⟨ht, le_rfl⟩
+  simpa only [gronwallBound_ε0, neg_mul] using h
+
+/-- **Exponential decay from a differential inequality, eventual form.** If `g' ≤ -lam * g` on
+`[T, ∞)`, then `g t ≤ C * exp (-(lam * t))` for some `C > 0` and all large `t`. -/
+theorem exists_le_mul_exp_atTop_of_hasDerivAt_le_neg_mul {g g' : ℝ → ℝ} {T lam : ℝ}
+    (hg : ∀ s ∈ Ici T, HasDerivAt g (g' s) s) (hle : ∀ s ∈ Ici T, g' s ≤ -lam * g s) :
+    ∃ C > 0, ∀ᶠ t in atTop, g t ≤ C * exp (-(lam * t)) := by
+  refine ⟨(|g T| + 1) * exp (lam * T), by positivity, ?_⟩
+  filter_upwards [eventually_ge_atTop T] with t ht
+  calc g t ≤ g T * exp (-(lam * (t - T))) := le_mul_exp_of_hasDerivAt_le_neg_mul hg hle ht
+    _ ≤ (|g T| + 1) * exp (-(lam * (t - T))) := by
+        gcongr
+        linarith [le_abs_self (g T)]
+    _ = (|g T| + 1) * exp (lam * T) * exp (-(lam * t)) := by
+        rw [mul_assoc, ← exp_add]
+        congr 2
+        ring
+
+/-- **Two-sided uniqueness from a Grönwall bound.** If `f` is differentiable within `[a, b]`,
+satisfies `‖f'‖ ≤ K ‖f‖` there and vanishes at one point of `[a, b]`, then it vanishes on
+`[a, b]`. Mathlib's `eq_zero_of_abs_deriv_le_mul_abs_self_of_eq_zero_right` is the case where
+the point is `a`. -/
+theorem eq_zero_of_norm_deriv_le_mul_norm_self_of_mem_Icc {E : Type*} [NormedAddCommGroup E]
+    [NormedSpace ℝ E] {f f' : ℝ → E} {K a b c : ℝ}
+    (hf : ∀ x ∈ Icc a b, HasDerivWithinAt f (f' x) (Icc a b) x)
+    (bound : ∀ x ∈ Icc a b, ‖f' x‖ ≤ K * ‖f x‖) (hc : c ∈ Icc a b) (hfc : f c = 0) :
+    ∀ x ∈ Icc a b, f x = 0 := by
+  intro x hx
+  rcases le_total c x with hcx | hxc
+  · have hsub : Icc c b ⊆ Icc a b := Icc_subset_Icc_left hc.1
+    exact eq_zero_of_abs_deriv_le_mul_abs_self_of_eq_zero_right
+      (fun y hy ↦ (hf y (hsub hy)).continuousWithinAt.mono hsub)
+      (fun y hy ↦ (hf y (hsub (Ico_subset_Icc_self hy))).mono_of_mem_nhdsWithin
+        (Icc_mem_nhdsGE_of_mem ⟨hc.1.trans hy.1, hy.2⟩))
+      hfc (fun y hy ↦ bound y (hsub (Ico_subset_Icc_self hy))) x ⟨hcx, hx.2⟩
+  · -- Reverse time and run the forward argument on `[-c, -a]`.
+    have hsub : Icc (-c) (-a) ⊆ -Icc a b := fun y hy ↦
+      ⟨by linarith [hy.2], by linarith [hy.1, hc.2]⟩
+    have key := eq_zero_of_abs_deriv_le_mul_abs_self_of_eq_zero_right
+      (f := fun y ↦ f (-y)) (f' := fun y ↦ -f' (-y)) (K := K) (a := -c) (b := -a)
+      (fun y hy ↦ (hf (-y) (hsub hy)).continuousWithinAt.comp continuous_neg.continuousWithinAt
+        fun z hz ↦ hsub hz)
+      (fun y hy ↦ by
+        have h := ((hf (-y) (hsub (Ico_subset_Icc_self hy))).mono_of_mem_nhdsWithin
+          (Icc_mem_nhdsLE_of_mem ⟨by linarith [hy.2], by linarith [hy.1, hc.2]⟩)).scomp y
+          (hasDerivWithinAt_neg y (Ici y)) fun z hz ↦ neg_le_neg_iff.2 hz
+        simpa [Function.comp_def] using h)
+      (by simpa using hfc) (fun y hy ↦ by simpa using bound (-y) (hsub (Ico_subset_Icc_self hy)))
+      (-x) ⟨by linarith, by linarith [hx.1]⟩
+    simpa using key
 
 end TauCeti

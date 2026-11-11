@@ -129,7 +129,7 @@ theorem mfderiv_curvatureTensor (Φ : RiemannianIsometry I J M N) (x : M)
   -- Extend the images of `u`, `v`, `w` to smooth vector fields on `N` and pull them back.
   have hext : ∀ u : TangentSpace I x, ∃ X : Π y : N, TangentSpace J y,
       CMDiff ∞ (T% X) ∧ mpullback I J Φ X x = u ∧ X (Φ x) = mfderiv I J Φ x u := fun u ↦ by
-    obtain ⟨X, hX, hXu⟩ := exists_contMDiff_section_eq J F (mfderiv I J Φ x u)
+    obtain ⟨X, hX, hXu⟩ := exists_contMDiff_section_eq J F ∞ (mfderiv I J Φ x u)
     refine ⟨X, hX, ?_, hXu⟩
     apply Φ.mfderiv_injective x
     rw [← coe_toDiffeomorph Φ, Φ.toDiffeomorph.mfderiv_apply_mpullback (by simp)]

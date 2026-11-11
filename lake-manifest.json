@@ -3,14 +3,14 @@
  "packagesDir": ".lake/packages",
  "packages": [
   {
-   "url": "https://github.com/leanprover-community/mathlib4",
+   "url": "https://github.com/leanprover-community/mathlib4.git",
    "type": "git",
    "subDir": null,
-   "scope": "",
-   "rev": "ccbef15ebdb41c2addfac682131f83c75904c3c1",
+   "scope": "leanprover-community",
+   "rev": "56a005855ea17e0b0958f73ec801ae140b0a1679",
    "name": "mathlib",
    "manifestFile": "lake-manifest.json",
-   "inputRev": "master",
+   "inputRev": "56a005855ea17e0b0958f73ec801ae140b0a1679",
    "inherited": false,
    "configFile": "lakefile.lean"
   },
